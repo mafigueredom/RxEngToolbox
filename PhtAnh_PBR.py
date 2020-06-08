@@ -25,7 +25,7 @@ from dolfin import XDMFFile, Mesh, FiniteElement, MixedElement, \
                    FunctionSpace, Measure, Constant, TestFunctions, \
                    Function, split, Expression, project, dot, grad, dx, \
                    solve, as_vector, MeshValueCollection, cpp, MPI, \
-                   TimeSeries, as_backend_type \
+                   TimeSeries, as_backend_type, assemble \
 
 from ufl.operators import exp
 from pygmeshio import Generate_PBRpygmsh
@@ -43,12 +43,12 @@ Start_St = dtm.datetime.now()  # The start time of execution--------------------
 # Time-stepping
 t = 0.0
 tf = 5.0                     # Final time, sec
-num_steps = 100               # Number of time steps
+num_steps = 500              # Number of time steps
 delta_t = tf / num_steps     # Time step size, sec
 dt = Constant(delta_t)
 
 R_path = 'Results'
-Data_visualization = True  # Data storage for later visualization.
+Data_visualization = False  # Data storage for later visualization.
 Data_postprocessing = False  # Data storage for later FEniCS computations.
 
 PBR_L = 3.0  # Reactor length, m
@@ -93,7 +93,7 @@ CAo = Constant(0.0)          # Initial composition for A
 CBo = Constant(0.0)          # Initial composition for A
 CCo = Constant(0.0)          # Initial composition for A
 To = Constant(625.15)        # Initial packed-bed Temperature
-Tcool_init = 625.15          # Coolant initial Temperature
+Twall = Constant(625.15)    # Initial wall temperature
 
 u_0 = Expression(('CA_init', 'CB_init', 'CC_init', 'T_init'),
                  degree=0, CA_init=CAo, CB_init=CBo, CC_init=CCo, T_init=To)
@@ -117,7 +117,6 @@ CA_in = PA_in/(R*T_in)       # Inlet composition of A,
 CB_in = PB_in/(R*T_in)       # Inlet composition of B,
 CC_in = PC_in/(R*T_in)       # Inlet composition of B,
 Tcool_in = Constant(625.15)  # Coolant inlet Temperature
-Twall = Constant(Tcool_init) # Wall Temperature
 
 """Transport properties"""
 eps = Constant(0.35)         # epsilon
@@ -145,18 +144,18 @@ hw = Constant(96.0)          # Wall heat transfer coefficient,
 Length = Constant(3.0)
 radius = Constant(0.0127)
 A = 2.0*mt.pi*radius*Length
-
 fw = Constant(0.1)
 Cpw = Constant(4200.0)
 roW = Constant(1000.0)
 Vw = Constant(3.0*(np.power(0.0254, 2))*(4.0-(np.power(mt.pi, 2))/4.0))
-denominator = ((roW*Cpw*Vw)/dt + fw*Cpw + hw*A*Length)
+Denom = ((roW*Vw*Cpw)/dt + fw*Cpw + hw*A*Length)
 
 
 def Kinetic_oxy(Temperature):
     """Kinetic constant - mathematical expression"""
     k_oxy = exp(alfa) * exp(-beta/Temperature)
     return k_oxy
+
 
 if Data_visualization:
     # Create XDMF - H5 files for visualization output
@@ -206,7 +205,7 @@ for n in range(num_steps):
     # Solve variational problem for time step
     solve(F == 0, u, solver_parameters={"newton_solver": {
             "relative_tolerance": 1e-6}, "newton_solver": {
-                    "maximum_iterations": 60}})
+                    "maximum_iterations": 10}})
     print('solver done')
 
     # Save solution to files for visualization and postprocessing(HDF5)
@@ -226,7 +225,16 @@ for n in range(num_steps):
 
     if Data_postprocessing:
         timeseries_Ufe.store(u_n.vector(), t)
+
+    Twall_n = Twall
+    ufl_integral = assemble(_u_T*ds_wall)
+    Numer = (roW*Vw*Cpw)/dt*Twall_n + fw*Cpw*Tcool_in + hw*A*ufl_integral
+    Twall_new = Numer/Denom
+    print('Wall temperature {} K'.format(np.around(float(Twall_new), 4)))
+
+    Twall.assign(Twall_new)
     u_n.assign(u)
+
 
 End_St = dtm.datetime.now()  # The end time of execution----------------------
 Execution_time(Start_St, End_St, 'Reports', 'PhtAnh_PBR', True)

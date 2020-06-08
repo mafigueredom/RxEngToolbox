@@ -73,7 +73,8 @@ if __name__ == "__main__":
     with XDMFFile(Facets) as infile:
         infile.read(mesh_F)
 
-    print('num_cells', mesh_D.num_cells())
-    print('num_vertices', mesh_D.num_vertices())
-    #print('num_facets', mesh_F.num_facets())
-    #print('num_edges', mesh_F.num_edges())
+    print('num_cells   :', mesh_D.num_cells())
+    print('num_vertices:', mesh_D.num_vertices())
+    print('cell_type   :', mesh_D.ufl_cell())
+    #print('num_facets:', mesh_F.num_facets())
+    #print('num_edges:', mesh_F.num_edges())

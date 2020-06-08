@@ -1,3 +1,0 @@
-<Xdmf Version="3.0"><Domain><Grid Name="Grid"><Information Name="Information" Value="0">
-<![CDATA[<main />]]>
-</Information><Geometry GeometryType="XY"><DataItem DataType="Float" Dimensions="53534 2" Format="HDF" Precision="8">PBR_facets.h5:/data0</DataItem></Geometry><Topology TopologyType="Polyline" NumberOfElements="6026" NodesPerElement="2"><DataItem DataType="Int" Dimensions="6026 2" Format="HDF" Precision="8">PBR_facets.h5:/data1</DataItem></Topology><Attribute Name="name_to_read" AttributeType="Scalar" Center="Cell"><DataItem DataType="Int" Dimensions="6026" Format="HDF" Precision="8">PBR_facets.h5:/data2</DataItem></Attribute></Grid></Domain></Xdmf>
