@@ -43,13 +43,12 @@ Start_St = dtm.datetime.now()  # The start time of execution--------------------
 # Time-stepping
 t = 0.0
 tf = 5.0                     # Final time, sec
-num_steps = 500              # Number of time steps
+num_steps = 5              # Number of time steps
 delta_t = tf / num_steps     # Time step size, sec
 dt = Constant(delta_t)
 
 R_path = 'Results'
-Data_visualization = False  # Data storage for later visualization.
-Data_postprocessing = False  # Data storage for later FEniCS computations.
+Data_postprocessing = True  # Data storage for later visualization & FEniCS computations.
 
 PBR_L = 3.0  # Reactor length, m
 PBR_R = 0.0127  # Reactor radius, m
@@ -156,20 +155,13 @@ def Kinetic_oxy(Temperature):
     k_oxy = exp(alfa) * exp(-beta/Temperature)
     return k_oxy
 
-
-if Data_visualization:
-    # Create XDMF - H5 files for visualization output
-    Path_DV = os.path.join(R_path, 'Visual_postprocessing')
-    xdmffile_A = XDMFFile(os.path.join(Path_DV, 'CA.xdmf'))
-    xdmffile_B = XDMFFile(os.path.join(Path_DV, 'CB.xdmf'))
-    xdmffile_C = XDMFFile(os.path.join(Path_DV, 'CC.xdmf'))
-    xdmffile_D = XDMFFile(os.path.join(Path_DV, 'CD.xdmf'))
-    xdmffile_T = XDMFFile(os.path.join(Path_DV, 'T.xdmf'))
-
 if Data_postprocessing:
     # Create time series (for use in reaction_system.py)
-    Path_DP = os.path.join(R_path, 'Data_postprocessing')
-    timeseries_Ufe = TimeSeries(os.path.join(Path_DP, 'DP_Ufe-at-n'))
+    fA_out = XDMFFile(os.path.join(R_path, 'A.xdmf'))
+    fB_out = XDMFFile(os.path.join(R_path, 'B.xdmf'))
+    fC_out = XDMFFile(os.path.join(R_path, 'C.xdmf'))
+    fD_out = XDMFFile(os.path.join(R_path, 'D.xdmf'))
+    fT_out = XDMFFile(os.path.join(R_path, 'T.xdmf'))
 
 # Variational problem definition
 
@@ -216,16 +208,13 @@ for n in range(num_steps):
     _3u_A, _3u_B, _3u_C, _3u_T = _3u_n.split()
     _u_D = _3u_C
 
-    if Data_visualization:
-        xdmffile_A.write(_u_A, t)
-        xdmffile_B.write(_u_B, t)
-        xdmffile_C.write(_u_C, t)
-        xdmffile_D.write(_u_D, t)
-        xdmffile_T.write(_u_T, t)
-
     if Data_postprocessing:
-        timeseries_Ufe.store(u_n.vector(), t)
-
+        fA_out.write_checkpoint(_u_A, "A", t,  XDMFFile.Encoding.HDF5, True)
+        fB_out.write_checkpoint(_u_B, "B", t,  XDMFFile.Encoding.HDF5, True)
+        fC_out.write_checkpoint(_u_C, "C", t,  XDMFFile.Encoding.HDF5, True)
+        fD_out.write_checkpoint(_u_D, "D", t,  XDMFFile.Encoding.HDF5, True)
+        fT_out.write_checkpoint(_u_T, "T", t,  XDMFFile.Encoding.HDF5, True)
+        
     Twall_n = Twall
     ufl_integral = assemble(_u_T*ds_wall)
     Numer = (roW*Vw*Cpw)/dt*Twall_n + fw*Cpw*Tcool_in + hw*A*ufl_integral
@@ -235,7 +224,7 @@ for n in range(num_steps):
     Twall.assign(Twall_new)
     u_n.assign(u)
 
-
+fA_out.close(); fB_out.close(); fC_out.close(); fD_out.close(); fT_out.close()
 End_St = dtm.datetime.now()  # The end time of execution----------------------
 Execution_time(Start_St, End_St, 'Reports', 'PhtAnh_PBR', True)
 # _______________END_______________ #
